@@ -1,0 +1,326 @@
+---
+title: "Projet final - Logiciel statistique R"
+author: "DIAGNE Pathé ISEP 3 ENSAE"
+date: "`r Sys.Date()`"
+supervisor: "Charge du cours Mr Hema Aboubacar"
+institution: "ENSAE"
+output:
+  word_document: 
+    toc: yes
+    toc_depth: 6
+    df_print: paged
+---
+\newpage
+
+
+# Avant Propos
+
+
+Selon Emmanuel KANT, la pratique sans la théorie est aveugle et que la théorie sans la pratique est absurde. Ainsi, les connaissances théoriques apprises ne seront d’aucune valeur sans la mise en application effective. C’est dans cette optique que l’Ecole Nationale de la Statistique et de l’Analyse Économique Pierre Ndiaye et monsieur **Hema Aboubacar**, accordent une importance et une considération particulière à la pratique au cours de la formation des élèves. Dans ce sens, l’élaboration de ce document est une bonne opportunité pour nous élèves Ingénieurs  statisticiens économistes d’affermir un peu plus les connaissances théoriques et pratiques acquises lors de notre cours de Pojet Statistique avec R.
+
+\newpage
+
+# II Partie 2
+
+Le fichier excel Base_Partie 2.xlsx contient un ensemble de données artificielles créé dans le cadre de ce projet. La première feuille contient des micro-données au niveau individuel des répondants à l’enquête, la deuxième feuille contient des données pour les districts dans lesquels les répondants de la première feuille ont été interrogés. La troisième feuille contient des explications sur les variables incluses dans toutes les feuilles précédentes.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Chunk global pour définir les options par défaut
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  results = 'asis'
+)
+# Les packages necessaires
+library(dplyr)
+library(lubridate)
+library(gtsummary)
+library(janitor)
+library(readxl)
+```
+
+\newpage
+
+## II.1 Nettoyage et gestion des données
+
+L'analyse et la visualisation des données sont des étapes essentielles dans le processus d'étude et d'interprétation des informations contenues dans un ensemble de données.
+
+- Pour analyser les données de ce projet, nous avons commencé par l'étape cruciale de **l'importation** de la base de données à partir de sources diverses.
+
+- L'importation de la base de données principale a été effectuée avec soin pour garantir l'intégrité des informations tout au long de notre étude.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Lire la feuille des micro-données individuelles
+donnees_individuelles <- read_excel("Base_Partie 2.xlsx", sheet = "data")
+
+# Lire la feuille des données des districts
+donnees_districts <- read_excel("Base_Partie 2.xlsx", sheet = "district")
+
+# Lire la feuille des explications des variables
+explications_variables <- read_excel("Base_Partie 2.xlsx", sheet = "codebook")
+
+```
+
+
+- Pour améliorer la lisibilité de notre ensemble de données, nous avons procédé au renommage de la variable clé "country_destination" en une étiquette plus concise :  **destination**
+
+\newpage
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Renommer la variable "country_destination" en "destination"
+donnees_individuelles <- donnees_individuelles %>%
+   rename(destination = country_destination)
+
+# Définir les valeurs négatives comme manquantes
+donnees_individuelles$destination[donnees_individuelles$destination < 0] <- NA
+
+# Créer une nouvelle variable contenant des tranches d'âge de 5 ans
+donnees_individuelles <- donnees_individuelles %>%
+   mutate(age_group = cut(age, breaks = seq(0, max(age, na.rm = TRUE), by = 5)))
+
+```
+
+
+- Pour préparer les données en vue de l'analyse, nous avons décidé de définir les valeurs négatives comme manquantes, afin de garantir l'intégrité de nos résultats et d'éviter toute distorsion potentielle dans notre étude.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Définir les valeurs négatives comme manquantes
+donnees_individuelles$destination[donnees_individuelles$destination < 0] <- NA
+
+# Créer une nouvelle variable contenant des tranches d'âge de 5 ans
+donnees_individuelles <- donnees_individuelles %>%
+   mutate(age_group = cut(age, breaks = seq(0, max(age, na.rm = TRUE), by = 5)))
+
+```
+\newpage
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Créeons une nouvelle variable contenant le nombre d'entretiens réalisés par chaque agent recenseur
+donnees_individuelles <- donnees_individuelles %>%
+   group_by(enumerator) %>%
+   mutate(n_entretiens = n()) %>%
+   ungroup()
+
+# Fixons l'aléa pour obtenir des résultats reproductibles
+set.seed(123)
+
+# Créer une nouvelle variable qui affecte aléatoirement chaque répondant à un groupe de traitement (1) ou de contrôle (0)
+donnees_individuelles <- donnees_individuelles %>%
+   mutate(groupe = sample(c(0, 1), size = nrow(donnees_individuelles), replace = TRUE))
+View(donnees_individuelles)
+
+```
+
+
+- Afin d'enrichir notre ensemble de données, nous avons procédé à la fusion de la taille de la population de chaque district, intégrant ainsi ces informations essentielles pour une analyse approfondie de nos données.
+
+\newpage
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Fusionner la taille de la population de chaque district avec l'ensemble de données
+donnees_individuelles <- donnees_individuelles %>%
+   left_join(donnees_districts, by = "district")
+
+# Calculer la durée de l'entretien et la durée moyenne par enquêteur
+donnees_individuelles <- donnees_individuelles %>%
+   mutate(duree_entretien = as.numeric(difftime(ymd_hms(endtime), ymd_hms(starttime), units = "mins"))) %>%
+   group_by(enumerator) %>%
+   mutate(duree_moyenne = mean(duree_entretien, na.rm = TRUE)) %>%
+   ungroup()
+
+```
+
+
+- Pour uniformiser la désignation des variables et faciliter leur distinction, nous avons entrepris de renommer toutes les variables en leur ajoutant le préfixe **'endline_'**. Cette opération nous permettra de maintenir la cohérence et la lisibilité de notre ensemble de données tout au long de notre analyse.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Renommer toutes les variables en ajoutant le préfixe "endline_"
+for (col in colnames(donnees_individuelles)) {
+   colnames(donnees_individuelles)[colnames(donnees_individuelles) == col] <- paste0("endline_", col)
+}
+```
+
+\newpage
+# II.2 Analyse et visualisation des données
+
+- En analysant notre ensemble de données, nous avons calculé l'âge moyen ainsi que le nombre moyen d'enfants par *district*, fournissant ainsi des informations essentielles pour mieux comprendre la répartition démographique et les caractéristiques familiales de chaque région étudiée.
+
+### Créons un tableau récapitulatif contenant l’âge moyen et le nombre moyen d’enfants par district.
+
+Dans le cadre de notre analyse, nous avons créé un tableau récapitulatif qui présente l'âge moyen ainsi que le nombre moyen d'enfants par district. Ce tableau nous permet de visualiser de manière claire et concise les caractéristiques démographiques essentielles de chaque région étudiée, offrant ainsi un aperçu global de la répartition des âges et des structures familiales au niveau local.
+
+\newpage
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(janitor)
+
+# Installation et chargement des packages dplyr et janitor
+
+# Calculons l'âge moyen et le nombre moyen d'enfants par district
+donnees_recap <- donnees_individuelles %>%
+   group_by(endline_district) %>%
+   summarize(endline_age_moyen = round(mean(endline_age, na.rm = TRUE), 2),
+             n_enfants_moyen = round(mean(endline_children_num, na.rm = TRUE), 2)) %>%
+   ungroup()
+
+# Créer un tableau récapitulatif avec janitor
+
+cat("<div style='width:100%;text-align:center;'>")
+donnees_recap %>%
+  adorn_totals("row") %>%
+  as.data.frame() %>%
+  setNames(c("District", "Âge moyen", "Nombre d'enfants moyen")) %>%
+   
+  knitr::kable(caption = "Récapitulatif des données par district", align = "c")
+
+```
+
+\newpage
+
+### Testons si la différence d’âge entre les sexes est statistiquement significative au niveau de 5 %.
+
+- Pour tester si la différence d'âge entre les sexes est statistiquement significative au niveau de 5 %, nous avons effectué une analyse de test d'hypothèse en utilisant un seuil de signification de 0,05.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# charger les packages dplyr et gtsummary
+library(dplyr)
+library(gtsummary)
+
+# Créer une nouvelle variable contenant les étiquettes "homme" et "femme"
+donnees_individuelles$sexe <- ifelse(donnees_individuelles$endline_sex == 0, "Femme", "Homme")
+
+# Créer un tableau récapitulatif des données par sexe
+tableau_recap <- donnees_individuelles %>%
+   select(sexe, endline_age) %>%
+   tbl_summary(by = sexe) %>%
+   add_p() %>%
+   modify_header(update = all_stat_cols() ~ "**{level}**") %>%
+   modify_footnote(
+      all_stat_cols() ~ "Source: Enquête sur les ménages",
+      footnote = "Source: Enquête sur les ménages"
+   )
+
+# Afficher le tableau récapitulatif
+tableau_recap
+
+```
+
+
+## II.3 Analyse et interpretations des resultas
+
+D’après les résultats du test que vous avez fournis, il semble que la différence d’âge entre les sexes ne soit pas statistiquement significative au niveau de 5 %. La valeur p du test est de 0,10, ce qui est supérieur au seuil de signification de 0,05. Cela signifie que nous ne pouvons pas rejeter l’hypothèse nulle selon laquelle il n’y a pas de différence significative entre les âges des hommes et des femmes.
+
+\newpage
+
+
+## Créeons un nuage de points de l’âge en fonction du nombre d’enfants.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+# Création d'un nuage de points de l’âge par rapport au nombre d’enfants.
+
+ggplot(donnees_individuelles, aes(x = endline_age, y = endline_children_num)) +
+   geom_point()
+
+```
+
+- Le nuage de points créé montre la relation entre l’âge et le nombre d’enfants pour chaque individu dans nos données. Chaque point du graphique représente un individu, la coordonnée x représentant son âge et la coordonnée y représentant son nombre d’enfants. Nous constatons la presence d'une valeur qui peut etre jugee commme valeur aberrante de notre age *999*.
+
+\newpage
+
+### La variable “intention” indique si les migrants potentiels ont l’intention de migrer sur une échelle de 1 à 7.  Estimez l’effet de l’appartenance au groupe de traitement sur l’intention de migrer.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+library(broom)
+library(dplyr)
+library(flextable)
+
+modele_regression <- lm(endline_intention ~ endline_groupe, data = donnees_individuelles)
+
+tableau_regression <- tidy(modele_regression)
+
+tableau_final <- flextable(tableau_regression) %>%
+   set_caption("Tableau récapitulatif des résultats de régression linéaire")
+
+tableau_final
+
+```
+
+## Créez un tableau de régression avec 3 modèles. La variable de résultat est toujours “intention”. 
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(gtsummary)
+library(broom)
+
+# Modèle A : Modèle vide - Effet du traitement sur les intentions
+modele_A <- lm(endline_intention ~ endline_groupe, data = donnees_individuelles)
+resultats_A <- tidy(modele_A)
+tableau_A <- tbl_regression(modele_A, exponentiate = FALSE, add_glance = FALSE)
+
+# Modèle B : Effet du traitement sur les intentions en tenant compte de l’âge et du sexe
+modele_B <- lm(endline_intention ~ endline_groupe + endline_age + endline_sex, data = donnees_individuelles)
+resultats_B <- tidy(modele_B)
+tableau_B <- tbl_regression(modele_B, exponentiate = FALSE, add_glance = FALSE)
+
+# Modèle C : Identique au modèle B mais en contrôlant le district
+
+modele_C <- lm(endline_intention ~ endline_groupe + endline_age + endline_sex + endline_district, data = donnees_individuelles)
+resultats_C <- tidy(modele_C)
+tableau_C <- tbl_regression(modele_C, exponentiate = FALSE, add_glance = FALSE)
+
+# Fusion des tableaux récapitulatifs
+tableau_final <- tbl_merge(list(tableau_A, tableau_B, tableau_C)) %>%
+   bold_labels()
+
+# Affichage du tableau récapitulatif
+tableau_final
+
+```
+\newpage
+
+- Dans le tableau ci-dessous les modeles A  B et C sont representes par table 1, 2 et 3 respectivement.
+
+### Analyse de nos resultas obtenus
+
+Ce tableau présente les résultats de trois modèles de régression linéaire qui ont été ajustés pour estimer l'effet du traitement sur l'intention de migrer. 
+
+
+- Modèle 1 (Tableau 1) inclut uniquement la variable du groupe de traitement (endline_groupe_traitement) en tant que variable explicative. Le coefficient estimé pour cette variable est -0,56, avec un intervalle de confiance à 95 % de (-1,3, 0,13) et une valeur de p de 0,11.
+
+
+- Modèle 2 (Tableau 2) inclut les variables du groupe de traitement, de l'âge (endline_age) et du sexe (endline_sex) en tant que variables explicatives. Le coefficient estimé pour la variable du groupe de traitement est -0,64, avec un intervalle de confiance à 95 % de (-1,3, 0,04) et une valeur de p de 0,066.
+
+- Modèle 3 (Tableau 3) inclut les mêmes variables explicatives que le Modèle 2, mais contrôle également le district (endline_district). Le coefficient estimé pour la variable du groupe de traitement est -0,62, avec un intervalle de confiance à 95 % de (-1,3, 0,07) et une valeur de p de 0,077.
+
+\newpage
+
+
+### Interpretations des resultats de notre regression
+
+Ces résultats suggèrent qu'il pourrait exister une association négative entre l'appartenance au groupe de traitement et l'intention de migrer, mais cette association n'est pas statistiquement significative dans les trois modèles.
+
+Dans le Modèle 1, les individus du groupe de traitement avaient une intention de migrer, en moyenne, inférieure de 0,56 point à celle des individus du groupe témoin, bien que cette différence ne soit pas statistiquement significative au niveau de 0,05.
+
+Dans le Modèle 2, qui contrôle l'âge et le sexe, les individus du groupe de traitement avaient une intention de migrer, en moyenne, inférieure de 0,64 point à celle des individus du groupe témoin après avoir pris en compte ces facteurs supplémentaires, bien que cette différence ne soit pas statistiquement significative au niveau de 0,05.
+
+Dans le Modèle 3, qui contrôle également le district, les individus du groupe de traitement avaient une intention de migrer, en moyenne, inférieure de 0,62 point à celle des individus du groupe témoin après avoir contrôlé tous les autres facteurs inclus dans le modèle, bien que cette différence ne soit pas statistiquement significative au niveau de 0,05.
+
+\newpage
+
+# CONCLUSION
+
+En résumé, bien que nos analyses suggèrent de facon globale une tendance vers une association négative entre le traitement et l'intention de migrer, nous n'avons pas pu établir de relation statistiquement significative dans aucun des trois modèles. Cela peut être dû à des facteurs non pris en compte dans notre étude ou à des échantillons insuffisamment grands pour détecter des différences significatives. Des études plus approfondies avec des échantillons plus larges pourraient être nécessaires pour approfondir cette question.
+
+
+
+

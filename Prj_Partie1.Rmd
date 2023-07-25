@@ -1,0 +1,518 @@
+---
+title: "Projet final - Logiciel statistique R"
+author: "DIAGNE Pathé ISEP 3 ENSAE"
+date: "`r Sys.Date()`"
+supervisor: "Charge du cours Mr Hema Aboubacar"
+institution: "ENSAE"
+output:
+  word_document: 
+    toc: yes
+    toc_depth: 6
+    df_print: paged
+---
+
+\newpage
+
+
+# Avant Propos
+
+
+Selon Emmanuel KANT, la pratique sans la théorie est aveugle et que la théorie sans la pratique est absurde. Ainsi, les connaissances théoriques apprises ne seront d’aucune valeur sans la mise en application effective. C’est dans cette optique que l’Ecole Nationale de la Statistique et de l’Analyse Économique Pierre Ndiaye et monsieur **Hema Aboubacar**, accordent une importance et une considération particulière à la pratique au cours de la formation des élèves. Dans ce sens, l’élaboration de ce document est une bonne opportunité pour nous élèves Ingénieurs  statisticiens économistes d’affermir un peu plus les connaissances théoriques et pratiques acquises lors de notre cours de Pojet Statistique avec R.
+
+
+\newpage
+
+
+# INTRODUCTION
+
+
+L'objectif de ce projet est de mettre en pratique les compétences acquises dans le cadre du cours sur lelogiciel statistique R en utilisant une étude de cas réelle. L'utilisation de R permet d'appliquer des techniques statistiques et de manipulation de données pour analyser les problèmes et prendre des décisions éclairées.
+
+En utilisant R, nous pouvons explorer les données, effectuer des analyses descriptives, appliquer des modèles statistiques, effectuer des tests d'hypothèses et produire des visualisations graphiques pour communiquer les résultats de manière claire et concise.
+
+Ce projet vise à intégrer les différentes étapes de l'analyse statistique, depuis la préparation des données jusqu'à l'interprétation des résultats. Il permet de se familiariser avec les différentes fonctions, packages et techniques disponibles dans R, ainsi que d'acquérir une expérience pratique dans l'utilisation de ces outils pour résoudre des problèmes réels.
+
+L'étude de cas réelle utilisée dans ce projet offre l'occasion d'appliquer les concepts et les méthodes statistiques appris, d'identifier les variables pertinentes, de formuler des hypothèses, d'effectuer des analyses appropriées et de tirer des conclusions basées sur les résultats.
+
+```{r}
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+```{r include=FALSE}
+# Définir mon répertoire de travail
+setwd("C:/Users/PATE DIAGNE/Desktop/Projet-R-Pathe_DIAGNE")
+# Vérifier le répertoire de travail actuel
+
+getwd()
+
+```
+
+\newpage
+
+#  Partie 1
+
+##  I- Préparation des données
+
+###   I.1 Description
+
+Le fichier Base_Partie1.xlsx contient 250 observations et 33 variables.
+La première colonne key correspond à l’identifiant de la PME. Les variables sont les suivantes :
+
+
+###  I.1.2 Importation et mise en forme
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(readxl)
+
+projet <- read_excel("Base_Partie 1.xlsx")
+
+# Vérification des valeurs manquantes pour la variable "key"
+valeurs_manquantes <- projet[is.na(projet$key), ]
+
+# Vérification des valeurs manquantes pour la variable "key"
+valeurs_manquantes <- projet[is.na(projet$key), ]
+
+if (nrow(valeurs_manquantes) > 0) {
+  cat("Il y a des valeurs manquantes dans la variable 'key'.\n")
+  cat("Nombre de valeurs manquantes : ", nrow(valeurs_manquantes), "\n")
+} else {
+  cat("Il n'y a pas de valeurs manquantes dans la variable 'key'.\n")
+}
+
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+library(dplyr)
+
+## 1.2.2 Selection les variables mentionnees dans la section description.
+
+projet_selected <- select(projet, q1, q2, q23, q24, q24a_1, q24a_2, q24a_3, q24a_4, q24a_5, q24a_6, q24a_7, q24a_9, q24a_10, q25, q26, q12, q14b, q16, q17, q19, q20, filiere_1, filiere_2, filiere_3, filiere_4, q8, q81, gps_menlatitude,gps_menlongitude, submissiondate,start,today)
+
+```
+
+\newpage
+
+
+### I.1.3 un tableau qui resume les valeurs manquantes par variable
+
+Dans ce code, nous avons ajouté une étape de filtrage après le calcul des valeurs manquantes pour ne conserver que les lignes où Valeurs_manquantes > 0. Le tableau résultant ne contiendra donc que les variables qui ont des valeurs manquantes.
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, results='asis'}
+
+library(tidyr)
+library(flextable)
+
+# Compter les valeurs manquantes dans chaque variable
+missing_counts <- projet_selected %>%
+  summarise_all(~ sum(is.na(.))) %>%
+  gather(key = "Variable", value = "Valeurs_manquantes")
+
+# Filtrer les variables avec des valeurs manquantes
+missing_counts_filtered <- missing_counts %>%
+  filter(Valeurs_manquantes > 0)
+
+# Calculer le pourcentage de chaque valeur manquante
+missing_counts_filtered <- missing_counts_filtered %>%
+  mutate(Pourcentage = round(Valeurs_manquantes / sum(Valeurs_manquantes) * 100, 3))
+
+# Créer une flextable avec les en-têtes de colonne spécifiques
+table_flex <- flextable(missing_counts_filtered)
+
+# Personnaliser le tableau
+table_flex <- set_header_labels(table_flex, Variable = "Variable", Valeurs_manquantes = "Valeurs manquantes", Pourcentage = "Pourcentage en %")
+table_flex <- align(table_flex, align = "center", part = "all")
+
+# Ajouter un titre au tableau
+title <- "Variables contenant des valeurs manquantes dans ma base"
+table_flex <- add_header_lines(table_flex, title)
+
+# Formater la colonne Pourcentage avec trois chiffres après la virgule
+table_flex <- colformat_num(table_flex, col_keys = "Pourcentage", digits = 3)
+
+
+```
+
+
+
+
+\newpage
+
+```{r}
+knitr::knit_print(table_flex)
+```
+
+
+- supposons que nous voulions afficher tous le tableau et avec les valeurs manquantes. Il s'agira pour nous de mettre en un tableau descriptif sommaire pour incluant les valeurs manquantes, en effet nous souhaitons voir les statistiques de base concernant les valeurs manquantes. 
+
+- Cela peut être utile pour avoir une vue d’ensemble de nos données et pour comprendre la proportion de valeurs manquantes pour chaque variable. En incluant les valeurs manquantes dans le tableau descriptif sommaire, nous pouvons ainsi voir combien de valeurs manquantes il y a pour chaque variable et prendre des décisions sur la façon de gérer ces valeurs manquantes dans nos analyses ultérieures
+
+\newpage
+
+
+
+## pour ameliorer la visibilite de nos valeurs manquantes, colorions les en bleu
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Compter les valeurs manquantes dans chaque variable
+missing_counts <- projet_selected %>%
+  summarise_all(~ sum(is.na(.))) %>%
+  gather(key = "Variable", value = "Valeurs_manquantes")
+
+# Calculer le pourcentage de chaque valeur manquante et le formater en pourcentage avec 3 chiffres après la virgule
+missing_counts <- missing_counts %>%
+  mutate(Pourcentage = sprintf("%.3f%%", Valeurs_manquantes / sum(Valeurs_manquantes) * 100))
+
+# Créer une flextable avec les en-têtes de colonne spécifiques
+table_flex <- flextable(missing_counts)
+
+# Personnaliser le tableau
+table_flex <- set_header_labels(table_flex, Variable = "Variable", Valeurs_manquantes = "Valeurs manquantes", Pourcentage = "Pourcentage")
+table_flex <- align(table_flex, align = "center", part = "all")
+
+# Ajouter un titre au tableau
+title <- "Valeurs manquantes par variable"
+table_flex <- add_header_lines(table_flex, title)
+
+# Colorer les valeurs manquantes en bleu
+table_flex <- color(table_flex, i = ~ Valeurs_manquantes > 0, j = ~ Valeurs_manquantes, color = "blue")
+
+
+```
+
+\newpage
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::knit_print(table_flex)
+
+```
+
+\newpage
+
+## I.2 Création de variables
+
+La création de variables est une étape importante dans l’analyse des données. Elle permet de stocker des données, des résultats d’analyses ou des valeurs calculées dans des objets qui peuvent être utilisés ultérieurement dans le code. 
+
+Les objectifs de la création de variables dans R peuvent varier en fonction de l’analyse en cours. La création de variables peut également faciliter l’organisation et la lisibilité du code en permettant de nommer et de référencer les objets de manière claire et concise
+
+### I.2.1 Rénommer la variable q1 en region , q2 en departement , q23 en sexe.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# ici on Rénomme la variable q1 en region
+
+projet <- rename(projet, region = q1)
+
+# ici on Rénomme q2 en departement
+projet <- rename(projet, departement = q2)
+
+# ici on Rénomme q23 en sexe
+projet <- rename(projet, sexe = q23)
+
+```
+
+
+### I.2.2 Créer la variable sexe_2 qui vaut 1 si sexe égale à Femme et 0 sinon.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#variable sexe_2 qui vaut 1 si sexe égale à Femme et 0 sinon
+
+projet <- mutate(projet, sexe_2 = ifelse(sexe == "Femme", 1, 0))
+
+#Créer un data.frame nommé langues qui prend les variables key et les variables correspondantes décrites plus haut
+
+langues <- projet %>%
+   select(key, starts_with("q24a_"))
+
+```
+
+\newpage
+
+### 1.2.3 Créons un data.frame nommé langues qui prend les variables key et les variables correspondantes décrites plus haut.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Créer une variable parle qui est égale au nombre de langue parlée par le dirigeant de la PME
+langues <- langues %>%
+   mutate(parle = rowSums(select(., -key)))
+
+# Sélectionner uniquement les variables key et parle, l'objet de retour sera langues
+langues <- langues %>%
+   select(key, parle)
+
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+#  Créer une variable parle qui est égale au nombre de langue parlée par le dirigeant de la PME.
+
+langues <- select(projet, key, q24a_1, q24a_2, q24a_3, q24a_4, q24a_5, q24a_6, q24a_7, q24a_9, q24a_10)
+projet <- mutate(projet, parle = rowSums(select(projet, q24a_1:q24a_10)))
+
+# Sélectionnez uniquement les variables key et parle, l’objet de retour sera langues.
+
+langues <- select(projet, key, parle)
+projet_langues <- left_join(projet, langues, by = "key")
+
+```
+
+\newpage
+
+## I.3  Analyses descriptives
+
+L’analyse descriptive est une méthode pour résumer et décrire les caractéristiques principales d’un ensemble de données. Elle peut inclure des mesures de tendance centrale (moyenne, médiane, mode), des mesures de dispersion (écart-type, variance, étendue), des fréquences et des proportions.
+
+### I.3.1  Creons un tableau descriptif sommaire
+
+Si vous souhaitez effectuer une analyse par filière, cela signifie que vous souhaitez examiner les caractéristiques de vos données pour chaque filière séparément. Vous pouvez le faire en filtrant vos données pour chaque filière, puis en effectuant des analyses descriptives sur les données filtrées.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+library(gtsummary)
+
+# Filtrez les données pour chaque filière
+projet_arachide <- filter(projet_langues, filiere_1 == 1)
+projet_anacarde <- filter(projet_langues, filiere_2 == 1)
+projet_mangue <- filter(projet_langues, filiere_3 == 1)
+projet_riz <- filter(projet_langues, filiere_4 == 1)
+
+# Analyse par filière en utilisant le package "gtsummary"
+
+# Arachide filière - Niveau d'étude
+
+table_arachide_niveau_etude <- tbl_summary(projet_arachide, by = sexe, missing ="no", 
+include = c(q25))
+
+# Anacarde filière - Niveau d'étude
+table_anacarde_niveau_etude <- tbl_summary(projet_anacarde, by = sexe, missing = "no", 
+include = c(q25))
+
+# Mangue filière - Niveau d'étude
+table_mangue_niveau_etude <- tbl_summary(projet_mangue, 
+by = sexe, missing = "no", include = c(q25))
+
+# Riz filière - Niveau d'étude
+table_riz_niveau_etude <- tbl_summary(projet_riz, 
+by = sexe, missing = "no", include = c(q25))
+
+# Combinons les tables pur les Niveau d'étude  da un seul table merge
+table_niveau_etude_complete <- tbl_merge(list(
+table_arachide_niveau_etude, table_anacarde_niveau_etude, table_mangue_niveau_etude, table_riz_niveau_etude
+), 
+tab_spanner = c("**Filière1: Arachide**", "**Filière2: Anacarde**", "**Filière3: Mangue**", "**Filière4: Riz**"))
+
+# Afilière rachide - Statut juridique
+table_arachide_statut_juridique <- tbl_summary(projet_arachide, by = sexe, missing = "no", 
+include = c(q12))
+
+# filière Anacarde  - Statut juridique
+table_anacarde_statut_juridique <- tbl_summary(projet_anacarde, by = sexe, missing = "no", 
+include = c(q12))
+
+# filièreMangue  - Statut juridique
+table_mangue_statut_juridique <- tbl_summary(projet_mangue, 
+by = sexe, missing = "no", include = c(q12))
+
+# Riz filière - Statut juridique
+table_riz_statut_juridique <- tbl_summary(projet_riz, 
+by = sexe, missing = "no", include = c(q12))
+
+# Combinez toutes les tables de Statut juridique en une seule table à l’aide de tbl_merge
+
+table_statut_juridique_complete <- tbl_merge(list(
+table_arachide_statut_juridique, table_anacarde_statut_juridique, table_mangue_statut_juridique, table_riz_statut_juridique
+), tab_spanner = c("**Filière1: Arachide**", "**Filière2: Anacarde**", "**Filière3: Mangue**", "**Filière4: Riz**"))
+
+# Arachide filière - Propriétaire/Locataire
+table_arachide_proprietaire_locataire <- tbl_summary(projet_arachide, by = sexe, missing = "no", 
+include = c(q81))
+
+# Anacarde filière - Propriétaire/Locataire
+table_anacarde_proprietaire_locataire <- tbl_summary(projet_anacarde, by = sexe, missing = "no", 
+include = c(q81))
+
+# Mangue filière - Propriétaire/Locataire
+table_mangue_proprietaire_locataire <- tbl_summary(projet_mangue, by = sexe, missing = "no", 
+include = c(q81))
+
+# filière Riz  - Propriétaire/Locataire
+table_riz_proprietaire_locataire <- tbl_summary(projet_riz, by = sexe, missing = "no", 
+include = c(q81))
+
+# Combinez toutes les tables pour Propriétaire/Locataire en une seule table à l’aide de tbl_merge
+
+table_proprietaire_locataire_complete <- tbl_merge(list(
+   table_arachide_proprietaire_locataire, table_anacarde_proprietaire_locataire, table_mangue_proprietaire_locataire, table_riz_proprietaire_locataire
+), 
+tab_spanner = c("**Filière1: Arachide**", "**Filière2: Anacarde**", "**Filière3: Mangue**", "**Filière4: Riz**"))
+
+# Combinez tous les tableaux (Niveau d’étude, Statut juridique, Propriétaire/Locataire) en utilisant tbl_stack
+
+table_complete <- tbl_stack(list(
+   table_niveau_etude_complete, table_statut_juridique_complete, table_proprietaire_locataire_complete
+), 
+group_header = c("**Niveau d'étude**", "**Statut juridique**", "**Propriétaire/Locataire**"))
+
+```
+
+```{r}
+knitr::knit_print(table_complete)
+
+```
+
+\newpage
+
+### I.3.2 les statistiques descriptives de notre choix sur les autres variables
+
+
+```{r eval=FALSE, include=FALSE}
+# Mesures de tendance centrale pour la variable q25 (Niveau d'étude) pour chaque filière
+mean(projet_arachide$q25, na.rm = TRUE) # moyenne pour la filière Arachide
+mean(projet_anacarde$q25, na.rm = TRUE) # moyenne pour la filière Anacarde
+
+# Mesures de dispersion pour la variable q25 (Niveau d'étude) pour chaque filière
+sd(projet_arachide$q25, na.rm = TRUE) # écart-type pour la filière Arachide
+sd(projet_anacarde$q25, na.rm = TRUE) # écart-type pour 
+
+# Fréquences et proportions pour la variable q12 (Statut juridique) pour chaque filière
+table(projet_arachide$q12) # tableau de fréquence pour la filière Arachide
+prop.table(table(projet_arachide$q12)) # tableau de proportion pour la filière Arachide
+
+table(projet_anacarde$q12) # tableau de fréquence pour la filière Anacarde
+prop.table(table(projet_anacarde$q12)) # tableau de proportion pour la filière Anacarde
+
+```
+
+## I.4 Un peu de cartographie
+
+### I.4.1 Preparation des donnees
+
+```{r  message=FALSE, warning=FALSE, include=FALSE, out.width='75%'}
+
+#  le  sf package
+library(sf)
+
+# Transformer le data frame en données géographiques
+
+projet_map <- st_as_sf(projet, coords = c("gps_menlongitude", "gps_menlatitude"), crs = 4326)
+
+senegal <- st_read("C:/Users/PATE DIAGNE/Desktop/Projet-R-Pathe_DIAGNE/Shapefiles/sen_admbnda_adm1_1m_gov_ocha_20190426.shp")
+
+```
+
+
+```{r echo=TRUE, fig.align='center', message=FALSE, warning=FALSE, out.width='75%'}
+
+# Cette ligne de code nous permet d'xtraire les noms de région du fichier de formes
+region_names <- senegal$ADM1_FR
+
+# Créer un bloc de données avec les noms de région
+regions <- data.frame(region = region_names)
+
+# Calculons les centroïdes des régions
+senegal_centroids <- st_centroid(senegal)
+
+# Convertir l’objet senegal_centroids en trame de données
+senegal_centroids_df <- as.data.frame(st_coordinates(senegal_centroids))
+senegal_centroids_df$region <- senegal$ADM1_FR
+
+```
+\newpage
+
+
+### I.4.2 realisons une réprésentation spatiale des PME suivant le sexe
+
+
+```{r echo=TRUE, fig.align='center', message=FALSE, warning=FALSE, out.width='75%'}
+library(ggplot2)
+ #  ceci nous permet d'jouter les noms des régions à la carte
+ggplot() +
+   geom_sf(data = senegal) +
+   geom_sf(data = projet_map, aes(color = sexe)) +
+   geom_text(data = senegal_centroids_df, aes(x = X, y = Y, label = region), size = 3) +
+   scale_color_manual(values = c("Femme" = "red", "Homme" = "blue")) +
+   theme_void() +
+   labs(title = "Représentation de la distribution des PME suivant le sexe",
+        
+        caption = "Données géographiques du Sénégal")
+
+```
+
+nous avons créé une représentation spatiale des PME par sexe en utilisant les packages sf et ggplot2.
+La carte montre la distribution spatiale des PME par sexe au Sénégal.
+Les points rouges représentent les PME détenues par des femmes, 
+tandis que les points bleus représentent les PME détenues par des hommes.
+
+\newpage
+
+
+### I.4.3 Faisons une réprésentation spatiale des PME suivant le niveau d’instruction
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Tracons les données avec le fichier de formes Sénégal
+ggplot() +
+   geom_sf(data = senegal) +
+   geom_sf(data = projet_map, aes(color = q25)) +
+   geom_text(data = senegal_centroids_df, aes(x = X, y = Y, label = region), size = 3) +
+   scale_color_discrete(name = "Niveau d’instruction") +
+   theme_void()+
+   labs(title = "Représentation de la distribution des PME selon le niveau d'étude",
+        
+        caption = "realisation de l'auteur")
+```
+
+### I.4.4 Realisons une analyse spatiale de votre choix
+
+
+ Nous proposons une analyse spatiale qui utilise **l’algorithme k-means** pour effectuer une analyse des clusters spatiaux sur un ensemble de données. L’algorithme k-means est une méthode de partitionnement de données qui vise à diviser les observations en k clusters en minimisant la somme des distances au carré entre chaque observation et le centroïde de son cluster.
+ L’analyse des clusters spatiaux peut vous aider à identifier les régions où les PME sont regroupées. En regroupant les points en fonction de leur proximité spatiale.
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# notre base"projet_map" contient des variables"geometry" pour les coordonnées spatiales
+
+coords <- st_coordinates(projet_map)
+
+# Effectuer l'analyse des clusters spatiaux avec k-means
+clusters <- kmeans(coords, centers = 5)$cluster
+
+# Ajouter les résultats de l'analyse des clusters au projet_map
+projet_map$cluster <- clusters
+
+# Tracer les résultats sur la carte du Sénégal
+ggplot() +
+   geom_sf(data = senegal) +
+   geom_sf(data = projet_map, aes(fill = factor(cluster))) +
+   scale_fill_discrete(name = "Cluster") +
+   theme_void()
+
+```
+
+\newpage
+
+- **interpretations**
+ 
+Nous pouvons voir qu'il existe des groupes de PME détenues par des femmes dans certaines zones,
+tandis que d'autres zones ont une plus grande concentration de PME détenues par des hommes. 
+Ces informations peuvent être utiles pour comprendre la dynamique de l'entrepreneuriat au Sénégal et pour identifier les domaines dans lesquels des interventions ciblées peuvent être nécessaires pour soutenir les femmes entrepreneurs.
+
+# Conclusion
+
+Cette étude nous a permis d'obtenir des informations importantes sur les bioénergies durables pour les PME agroalimentaires d'Afrique de l'Ouest. Les tableaux récapitulatifs nous ont aidés à identifier les tendances et les caractéristiques importantes pour chaque filière étudiée. Ces résultats constituent une base solide pour des actions futures visant à promouvoir l'utilisation de bioénergies durables dans cette région
